@@ -50,10 +50,8 @@ bool bleConnect = AttemptBLECOnnect;
 #endif
 
 /*----------------------BT topics & parameters-------------------------*/
-//#define subjectBTtoMQTT    "/BTtoMQTT"  
-#define subjectBTtoMQTT    "/ble"  
-//#define subjectMQTTtoBTset "/commands/MQTTtoBT/config"
-#define subjectMQTTtoBTset "/cmd/ble/config"
+#define subjectBTtoMQTT    "/BTtoMQTT"  
+#define subjectMQTTtoBTset "/commands/MQTTtoBT/config"
 #define MinimumRSSI        -100 //default minimum rssi value, all the devices below -90 will not be reported
 
 #ifndef Scan_duration
