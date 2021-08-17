@@ -79,7 +79,7 @@ void RFtoMQTT() {
 #  ifdef ZradioCC1101 //receiving with CC1101
     const int JSON_MSG_CALC_BUFFER = JSON_OBJECT_SIZE(5);
 #  else
-    const int JSON_MSG_CALC_BUFFER = JSON_OBJECT_SIZE(4);
+    const int JSON_MSG_CALC_BUFFER = JSON_OBJECT_SIZE(5);
 #  endif
     StaticJsonBuffer<JSON_MSG_CALC_BUFFER> jsonBuffer;
     JsonObject& RFdata = jsonBuffer.createObject();
@@ -92,6 +92,8 @@ void RFtoMQTT() {
     RFdata.set("protocol", (int)mySwitch.getReceivedProtocol());
     RFdata.set("length", (int)mySwitch.getReceivedBitlength());
     RFdata.set("delay", (int)mySwitch.getReceivedDelay());
+    RFdata.set("sumError", (int)mySwitch.getReceivedSumError());
+    
 #  ifdef ZradioCC1101 // set Receive off and Transmitt on
     RFdata.set("mhz", receiveMhz);
 #  endif
