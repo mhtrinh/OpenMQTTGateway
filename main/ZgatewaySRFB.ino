@@ -54,7 +54,7 @@ void _rfbSend(byte* message) {
 
 void _rfbSend(byte* message, int times) {
   char buffer[RF_MESSAGE_SIZE];
-  _rfbToChar(message, buffer);
+  _rawToHex(message, buffer, RF_MESSAGE_SIZE);
   Log.notice(F("[RFBRIDGE] Sending MESSAGE" CR));
 
   for (int i = 0; i < times; i++) {
@@ -99,24 +99,24 @@ void _rfbDecode() {
   char buffer[RF_MESSAGE_SIZE * 2 + 1] = {0};
 
   if (action == RF_CODE_RFIN) {
-    _rfbToChar(&_uartbuf[1], buffer);
+    _rawToHex(&_uartbuf[1], buffer, RF_MESSAGE_SIZE);
 
     Log.trace(F("Creating SRFB buffer" CR));
-    StaticJsonBuffer<JSON_MSG_BUFFER> jsonBuffer;
-    JsonObject& SRFBdata = jsonBuffer.createObject();
-    SRFBdata.set("raw", String(buffer).substring(0, 18));
+    StaticJsonDocument<JSON_MSG_BUFFER> jsonBuffer;
+    JsonObject SRFBdata = jsonBuffer.to<JsonObject>();
+    SRFBdata["raw"] = String(buffer).substring(0, 18);
 
     int val_Tsyn = (int)(int)value_from_hex_data(buffer, 0, 4, false, false);
-    SRFBdata.set("delay", (int)val_Tsyn);
+    SRFBdata["delay"] = (int)val_Tsyn;
 
     int val_Tlow = (int)value_from_hex_data(buffer, 4, 4, false, false);
-    SRFBdata.set("val_Tlow", (int)val_Tlow);
+    SRFBdata["val_Tlow"] = (int)val_Tlow;
 
     int val_Thigh = (int)value_from_hex_data(buffer, 8, 4, false, false);
-    SRFBdata.set("val_Thigh", (int)val_Thigh);
+    SRFBdata["val_Thigh"] = (int)val_Thigh;
 
     unsigned long MQTTvalue = (unsigned long)value_from_hex_data(buffer, 12, 8, false, false);
-    SRFBdata.set("value", (unsigned long)MQTTvalue);
+    SRFBdata["value"] = (unsigned long)MQTTvalue;
 
     if (!isAduplicateSignal(MQTTvalue) && MQTTvalue != 0) { // conditions to avoid duplications of RF -->MQTT
       Log.trace(F("Adv data SRFBtoMQTT" CR));
@@ -142,31 +142,7 @@ void _rfbAck() {
   Serial.println();
 }
 
-/*
-From an hexa char array ("A220EE...") to a byte array (half the size)
- */
-bool _rfbToArray(const char* in, byte* out) {
-  if (strlen(in) != RF_MESSAGE_SIZE * 2)
-    return false;
-  char tmp[3] = {0};
-  for (unsigned char p = 0; p < RF_MESSAGE_SIZE; p++) {
-    memcpy(tmp, &in[p * 2], 2);
-    out[p] = strtol(tmp, NULL, 16);
-  }
-  return true;
-}
-
-/*
-From a byte array to an hexa char array ("A220EE...", double the size)
- */
-bool _rfbToChar(byte* in, char* out) {
-  for (unsigned char p = 0; p < RF_MESSAGE_SIZE; p++) {
-    sprintf_P(&out[p * 2], PSTR("%02X" CR), in[p]);
-  }
-  return true;
-}
-
-#  ifdef simpleReceiving
+#  if simpleReceiving
 void MQTTtoSRFB(char* topicOri, char* datacallback) {
   // RF DATA ANALYSIS
   String topic = topicOri;
@@ -255,14 +231,14 @@ void MQTTtoSRFB(char* topicOri, char* datacallback) {
       valueRPT = 1;
 
     byte message_b[RF_MESSAGE_SIZE];
-    _rfbToArray(datacallback, message_b);
+    _hexToRaw(datacallback, message_b, RF_MESSAGE_SIZE);
     _rfbSend(message_b, valueRPT);
     // Acknowledgement to the GTWRF topic
     pub(subjectGTWSRFBtoMQTT, datacallback); // we acknowledge the sending by publishing the value to an acknowledgement topic, for the moment even if it is a signal repetition we acknowledge also
   }
 }
 #  endif
-#  ifdef jsonReceiving
+#  if jsonReceiving
 void MQTTtoSRFB(char* topicOri, JsonObject& SRFBdata) {
   // RF DATA ANALYSIS
   const char* raw = SRFBdata["raw"];
@@ -272,7 +248,7 @@ void MQTTtoSRFB(char* topicOri, JsonObject& SRFBdata) {
     if (raw) { // send raw in priority when defined in the json
       Log.trace(F("MQTTtoSRFB raw ok" CR));
       byte message_b[RF_MESSAGE_SIZE];
-      _rfbToArray(raw, message_b);
+      _hexToRaw(raw, message_b, RF_MESSAGE_SIZE);
       _rfbSend(message_b, valueRPT);
     } else {
       unsigned long data = SRFBdata["value"];
